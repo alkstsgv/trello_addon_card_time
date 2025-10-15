@@ -1,7 +1,7 @@
 import os
 import json
 
-MANIFEST_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "trello-addon", "manifest.json")
+MANIFEST_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "trello-addon_back", "manifest.json")
 
 def write_manifest(backend_url: str):
     manifest_data = {
