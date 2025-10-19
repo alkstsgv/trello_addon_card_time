@@ -107,7 +107,43 @@ def get_card_detailed_history(card_id: str, db: Session = Depends(get_db)):
 
     # Преобразуем историю в детальный формат
     detailed_history = []
+
+    # Сначала обработаем создание карточки
+    if history:
+        first_history = history[0]
+        # Найдем действие создания карточки
+        create_action = None
+        for action in actions:
+            if action.get("type") == "createCard":
+                create_action = action
+                break
+
+        if create_action:
+            member_id = create_action.get("idMemberCreator")
+            member_name = "N/A"
+            if member_id and member_id in members_dict:
+                member_name = members_dict[member_id].get("fullName", members_dict[member_id].get("username", member_id))
+
+            detailed_history.append({
+                "id": f"create_{first_history.id}",
+                "type": "createCard",
+                "date": first_history.date.isoformat(),
+                "data": {
+                    "listBefore": None,
+                    "listAfter": first_history.list_name,
+                    "moveTo": f"Создана → {first_history.list_name}"
+                },
+                "memberCreator": {
+                    "id": member_id,
+                    "name": member_name
+                }
+            })
+
     for h in history:
+        # Пропускаем первую запись, если она уже обработана как создание
+        if detailed_history and detailed_history[0]["id"] == f"create_{h.id}":
+            continue
+
         # Находим соответствующее действие в полной истории для получения listBefore/listAfter
         list_before = None
         list_after = None
