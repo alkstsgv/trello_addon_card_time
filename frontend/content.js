@@ -199,14 +199,14 @@ function initContent() {
 
             const historyData = await historyResponse.json();
 
-            let historyHtml = '<h4>History</h4><table border="1"><tr><th>Date</th><th>Action</th><th>List</th><th>Member</th></tr>';
+            let historyHtml = '<h4>History</h4><table border="1"><tr><th>Date</th><th>Action</th><th>List</th><th>Visits</th></tr>';
             if (historyData && historyData.length > 0) {
                 for (const action of historyData) {
                     const date = new Date(action.date).toLocaleString();
                     const type = action.type;
                     const listName = action.data?.listName || 'N/A';
-                    const memberId = action.memberCreator?.id || 'N/A';
-                    historyHtml += `<tr><td>${date}</td><td>${type}</td><td>${listName}</td><td>${memberId}</td></tr>`;
+                    const visitCount = action.data?.visitCount || 1;
+                    historyHtml += `<tr><td>${date}</td><td>${type}</td><td>${listName}</td><td>${visitCount}</td></tr>`;
                 }
             } else {
                 historyHtml += '<tr><td colspan="4">No history found</td></tr>';

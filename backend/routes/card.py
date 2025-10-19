@@ -40,20 +40,40 @@ def get_card_history(card_id: str, db: Session = Depends(get_db)):
 
     history = db.query(CardHistory).filter(CardHistory.card_id == db_card.id).order_by(CardHistory.date).all()
 
-    # Преобразуем в список словарей
-    history_list = []
+    # Группируем по названию колонки и считаем количество посещений
+    list_visits = {}
     for h in history:
+        if h.list_name:
+            if h.list_name not in list_visits:
+                list_visits[h.list_name] = {
+                    "count": 0,
+                    "first_visit": h.date,
+                    "last_visit": h.date
+                }
+            list_visits[h.list_name]["count"] += 1
+            if h.date < list_visits[h.list_name]["first_visit"]:
+                list_visits[h.list_name]["first_visit"] = h.date
+            if h.date > list_visits[h.list_name]["last_visit"]:
+                list_visits[h.list_name]["last_visit"] = h.date
+
+    # Преобразуем в список словарей с уникальными колонками
+    history_list = []
+    for list_name, data in list_visits.items():
         history_list.append({
-            "id": h.id,
-            "type": h.action_type,
-            "date": h.date.isoformat(),
+            "id": f"{card_id}_{list_name}",
+            "type": "visitList",
+            "date": data["first_visit"].isoformat(),
             "data": {
-                "listName": h.list_name,
+                "listName": list_name,
+                "visitCount": data["count"]
             },
             "memberCreator": {
-                "id": h.member_id,
+                "id": None,  # Не указываем конкретного пользователя для агрегированных данных
             }
         })
+
+    # Сортируем по дате первого посещения
+    history_list.sort(key=lambda x: x["date"])
 
     return history_list
 
