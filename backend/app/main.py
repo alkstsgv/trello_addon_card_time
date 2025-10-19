@@ -101,12 +101,13 @@ def serve_content(request: Request):
         <title>Card Tracker Content</title>
         <script src="https://p.trellocdn.com/power-up.min.js"></script>
         <style>
-            body {{ font-family: Arial, sans-serif; padding: 20px; }}
+            body {{ font-family: Arial, sans-serif; padding: 20px; width: 300px; }}
             .metric-group {{ margin: 10px 0; padding: 10px; border: 1px solid #ddd; }}
             button {{ padding: 10px 20px; background: #0079bf; color: white; border: none; cursor: pointer; }}
             button:hover {{ background: #005a87; }}
             table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
             th, td {{ padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }}
+            .resize-handle {{ position: absolute; bottom: 0; left: 0; right: 0; height: 10px; background: #0079bf; cursor: ns-resize; opacity: 0.7; border-radius: 5px 5px 0 0; }}
         </style>
     </head>
     <body>
@@ -122,6 +123,7 @@ def serve_content(request: Request):
         </div>
         <div id="content">Click "Load Metrics" to see data</div>
         <div id="history">History will appear here</div>
+        <div class="resize-handle"></div>
 
         <script>
             window.BACKEND_URL = "{backend_url}";

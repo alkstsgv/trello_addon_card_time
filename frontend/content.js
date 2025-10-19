@@ -223,24 +223,14 @@ function initContent() {
 }
 
 function addResizeFunctionality() {
-    // Create resize handle
-    const resizeHandle = document.createElement('div');
-    resizeHandle.id = 'resize-handle';
-    resizeHandle.style.cssText = `
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 10px;
-        background: #0079bf;
-        cursor: ns-resize;
-        opacity: 0.7;
-        border-radius: 5px 5px 0 0;
-    `;
-
-    // Add resize handle to body
-    document.body.style.position = 'relative';
-    document.body.appendChild(resizeHandle);
+    // Find or create resize handle
+    let resizeHandle = document.querySelector('.resize-handle');
+    if (!resizeHandle) {
+        resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        document.body.style.position = 'relative';
+        document.body.appendChild(resizeHandle);
+    }
 
     let isResizing = false;
     let startY = 0;

@@ -24,6 +24,7 @@ TrelloPowerUp.initialize({
       color: 'blue'
     }];
   },
+  // Remove card-detail-badges to avoid duplicate buttons
   'card-detail-badges': function(t, options) {
     return [{
       title: 'Card Tracker',
