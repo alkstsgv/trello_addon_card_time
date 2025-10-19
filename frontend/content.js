@@ -28,6 +28,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function initContent() {
     console.log('Initializing content...');
 
+    // Add resize functionality
+    addResizeFunctionality();
+
     const loadBtn = document.getElementById('load-metrics-btn');
     const contentDiv = document.getElementById('content');
     const historyDiv = document.getElementById('history');
@@ -215,6 +218,66 @@ function initContent() {
             console.error(err);
             contentDiv.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
             historyDiv.innerHTML = '';
+        }
+    });
+}
+
+function addResizeFunctionality() {
+    // Create resize handle
+    const resizeHandle = document.createElement('div');
+    resizeHandle.id = 'resize-handle';
+    resizeHandle.style.cssText = `
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 10px;
+        background: #0079bf;
+        cursor: ns-resize;
+        opacity: 0.7;
+        border-radius: 5px 5px 0 0;
+    `;
+
+    // Add resize handle to body
+    document.body.style.position = 'relative';
+    document.body.appendChild(resizeHandle);
+
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = parseInt(localStorage.getItem('card-tracker-iframe-height') || '500');
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        const deltaY = e.clientY - startY;
+        const newHeight = Math.max(300, Math.min(1200, startHeight + deltaY));
+
+        // Save to localStorage (use different key for card back section)
+        const isCardBack = window.location.href.includes('popup.html');
+        const storageKey = isCardBack ? 'card-tracker-card-back-height' : 'card-tracker-iframe-height';
+        localStorage.setItem(storageKey, newHeight.toString());
+
+        // Notify parent window to resize iframe
+        if (window.parent && window.parent.postMessage) {
+            window.parent.postMessage({
+                type: 'resize-iframe',
+                height: newHeight
+            }, '*');
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            document.body.style.userSelect = '';
         }
     });
 }

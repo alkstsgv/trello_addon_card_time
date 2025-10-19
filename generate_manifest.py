@@ -24,6 +24,7 @@ def write_manifest(backend_url: str):
         "card-buttons",
         "card-badges",
         "card-detail-badges",
+        "card-back-section",
         "show-settings",
         "content"
     ]

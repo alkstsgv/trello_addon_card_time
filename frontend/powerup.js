@@ -32,6 +32,19 @@ TrelloPowerUp.initialize({
       callback: cardButtonCallback
     }];
   },
+  'card-back-section': function(t, options) {
+    // Get saved height from localStorage
+    const savedHeight = localStorage.getItem('card-tracker-card-back-height') || 300;
+    return {
+      title: 'Card Tracker',
+      icon: GRAY_ICON,
+      content: {
+        type: 'iframe',
+        url: t.signUrl('./popup.html'),
+        height: parseInt(savedHeight)
+      }
+    };
+  },
   'board-buttons': function(t, options) {
     return [{
       icon: GRAY_ICON,
@@ -47,13 +60,15 @@ TrelloPowerUp.initialize({
     }];
   },
   'content': function(t, options) {
+    // Get saved height from localStorage
+    const savedHeight = localStorage.getItem('card-tracker-iframe-height') || 500;
     return {
       title: 'Card Tracker',
       icon: GRAY_ICON,
       content: {
         type: 'iframe',
         url: t.signUrl('./content.html'),
-        height: 500
+        height: parseInt(savedHeight)
       }
     };
   },
