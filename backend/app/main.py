@@ -1,8 +1,9 @@
 import os
 import subprocess
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # Обновленные импорты
@@ -48,7 +49,7 @@ app = FastAPI(lifespan=lifespan)  # <-- Передаём lifespan
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*", "https://trello.com", "https://*.trello.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,18 +63,48 @@ app.include_router(export.router, prefix="/api", tags=["export"])
 # Подключаем статику (CSS, JS) под префикс /static
 app.mount("/static", StaticFiles(directory="./frontend"), name="static")
 
-# Подключаем powerup.html как корневой файл (отдаётся по /)
-@app.get("/")
-def read_root():
-    from fastapi.responses import FileResponse
-    # Возвращаем файл powerup.html из директории frontend
-    return FileResponse(os.path.join("./frontend", "powerup.html"))
+# Убираем неправильный mount для powerup_frame.html, так как это маршрут, а не статический файл
 
-# Роут для доступа к powerup.html напрямую
-@app.get("/powerup.html")
-def serve_powerup():
-    from fastapi.responses import FileResponse
-    return FileResponse(os.path.join("./frontend", "powerup.html"))
+# --- НОВЫЙ маршрут для iframe ---
+# Этот HTML будет минимальным, он подключит powerup.js и вызовет Trello Power-Up initialize
+@app.get("/powerup_frame.html", response_class=HTMLResponse)
+def serve_powerup_frame(request: Request):
+    backend_url = request.url.scheme + "://" + request.url.netloc
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Card Tracker Frame</title>
+        <!-- Подключаем Trello Power-Up SDK -->
+        <script src="https://trello.com/power-ups/power-ups.min.js"></script>
+    </head>
+    <body>
+        <!-- Пустое тело. UI будет отрисован через t.render() в powerup.js -->
+        <script>
+            // Устанавливаем BACKEND_URL для использования в powerup.js
+            window.BACKEND_URL = "{backend_url}";
+        </script>
+        <!-- Подключаем наш скрипт после установки BACKEND_URL -->
+        <script src="/static/powerup.js"></script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+
+
+# Подключаем powerup.html как корневой файл (отдаётся по /)
+# @app.get("/")
+# def read_root():
+#     from fastapi.responses import FileResponse
+#     # Возвращаем файл powerup.html из директории frontend
+#     return FileResponse(os.path.join("./frontend", "powerup.html"))
+
+# # Роут для доступа к powerup.html напрямую
+# @app.get("/powerup.html")
+# def serve_powerup():
+#     from fastapi.responses import FileResponse
+#     return FileResponse(os.path.join("./frontend", "powerup.html"))
 
 # --- Удаляем старый блок ---
 # @app.on_event("startup")
