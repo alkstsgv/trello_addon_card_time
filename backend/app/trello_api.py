@@ -48,6 +48,22 @@ def get_card_info(card_id: str, token: str = None):
     else:
         raise Exception(f"Ошибка при получении карточки: {response.status_code}, {response.text}")
 
+def get_board_lists(board_id: str, token: str = None):
+    """
+    Получает список колонок доски.
+    """
+    url = f"{BASE_URL}/boards/{board_id}/lists"
+    params = {
+        "key": TRELLO_API_KEY,
+        "token": token or TRELLO_TOKEN,
+        "filter": "open"  # Только открытые колонки
+    }
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Ошибка при получении колонок доски: {response.status_code}, {response.text}")
+
 def save_card_history(card_id: str, actions: list, db: Session):
     """
     Сохраняет историю действий в базу данных.
@@ -121,7 +137,17 @@ def calculate_card_metrics(card_id: str, db: Session):
     """
     db_card = db.query(Card).filter(Card.trello_card_id == card_id).first()
     if not db_card:
-        raise ValueError("Карточка не найдена в базе")
+        # Попытка загрузить данные автоматически
+        try:
+            from .trello_api import get_card_actions, save_card_history
+            actions = get_card_actions(card_id)
+            save_card_history(card_id, actions, db)
+            # Повторный запрос после загрузки
+            db_card = db.query(Card).filter(Card.trello_card_id == card_id).first()
+            if not db_card:
+                raise ValueError("Карточка не найдена в базе даже после загрузки")
+        except Exception as e:
+            raise ValueError(f"Карточка не найдена в базе: {str(e)}")
 
     history = db.query(CardHistory).filter(CardHistory.card_id == db_card.id).order_by(CardHistory.date).all()
 
@@ -141,8 +167,16 @@ def calculate_card_metrics(card_id: str, db: Session):
     move_counts_by_member = {}
 
     # Получаем полную историю действий для подсчета перемещений по пользователям и времени участников
+    actions = []
     try:
         actions = get_card_actions(card_id)
+        print(f"Got {len(actions)} actions for card {card_id}")
+    except Exception as e:
+        print(f"Error getting actions: {e}")
+        actions = []
+        member_time_stats = {}
+        move_counts_by_member = {}
+        time_per_member = {}
         # Создаем словарь для подсчета перемещений каждым пользователем
         member_move_counts = {}
         members_dict = {}
@@ -169,6 +203,44 @@ def calculate_card_metrics(card_id: str, db: Session):
                         list_name = data.get("listAfter", {}).get("name")
                         if list_name:
                             member_move_counts[member_name][list_name] = member_move_counts[member_name].get(list_name, 0) + 1
+
+        # Если не найдено действий перемещения, используем данные из истории базы данных
+        if not member_move_counts and history:
+            for h in history:
+                if h.member_id:
+                    # Для простоты используем member_id как имя, если не можем получить настоящее имя
+                    member_name = f"User_{h.member_id[:8]}"  # Первые 8 символов ID
+                    if member_name not in member_move_counts:
+                        member_move_counts[member_name] = {}
+                    if h.list_name:
+                        member_move_counts[member_name][h.list_name] = member_move_counts[member_name].get(h.list_name, 0) + 1
+
+        # Всегда добавляем данные из истории базы данных как резерв
+        print(f"Processing {len(history)} history records for move counts")
+        for h in history:
+            if h.member_id and h.action_type in ["createCard", "updateCard"]:
+                member_name = f"User_{h.member_id[:8]}"
+                if member_name not in member_move_counts:
+                    member_move_counts[member_name] = {}
+                if h.list_name:
+                    member_move_counts[member_name][h.list_name] = member_move_counts[member_name].get(h.list_name, 0) + 1
+                    print(f"Added move count for {member_name} in {h.list_name}: {member_move_counts[member_name][h.list_name]}")
+
+        # Создаем member_time_stats из истории базы данных
+        member_time_stats = {}
+        for h in history:
+            if h.member_id:
+                member_name = f"User_{h.member_id[:8]}"
+                if member_name not in member_time_stats:
+                    member_time_stats[member_name] = {
+                        "total_time": 0,
+                        "appears_count": 0,
+                        "leaves_count": 0,
+                        "sessions": []
+                    }
+                member_time_stats[member_name]["appears_count"] += 1
+                # Для простоты считаем, что каждый action - это появление и уход
+                member_time_stats[member_name]["leaves_count"] += 1
 
         move_counts_by_member = member_move_counts
 
@@ -228,8 +300,11 @@ def calculate_card_metrics(card_id: str, db: Session):
 
     except Exception as e:
         print(f"Error getting actions for move counts and member time: {e}")
+        import traceback
+        traceback.print_exc()
         move_counts_by_member = {}
         time_per_member = {}
+        member_time_stats = {}
 
     # Временные переменные
     current_list = None

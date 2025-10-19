@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from ..app.database import get_db
 from ..app.models import User
+from ..app.trello_api import get_board_lists
 
 router = APIRouter()
 
@@ -27,3 +28,11 @@ def get_user_settings(username: str, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"settings": user.settings}
+
+@router.get("/board/{board_id}/lists")
+def get_board_lists_endpoint(board_id: str):
+    try:
+        lists = get_board_lists(board_id)
+        return lists
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

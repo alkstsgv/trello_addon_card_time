@@ -179,6 +179,61 @@ def serve_popup(request: Request):
     """
     return HTMLResponse(content=html_content)
 
+@app.get("/board-settings.html", response_class=HTMLResponse)
+def serve_board_settings(request: Request):
+    backend_url = request.url.scheme + "://" + request.url.netloc
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Card Tracker - Board Settings</title>
+        <script src="https://p.trellocdn.com/power-up.min.js"></script>
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 20px; }}
+            .badge-setting {{ margin: 15px 0; padding: 10px; border: 1px solid #ddd; }}
+            .color-picker {{ display: inline-block; width: 30px; height: 30px; border: 1px solid #ccc; cursor: pointer; margin-left: 10px; }}
+            .list-selector {{ margin-top: 5px; }}
+            .list-selector select {{ width: 100%; height: 100px; }}
+        </style>
+    </head>
+    <body>
+        <h3>Card Tracker - Board Settings</h3>
+        <div id="board-settings-container">
+            <div class="badge-setting">
+                <label><input type="checkbox" id="show-current-list-time"> Show time in current list</label>
+                <button class="color-picker" id="current-list-color" style="background-color: #0079bf;"></button>
+            </div>
+
+            <div class="badge-setting">
+                <label><input type="checkbox" id="show-total-time"> Show total time</label>
+                <button class="color-picker" id="total-time-color" style="background-color: #61bd4f;"></button>
+            </div>
+
+            <div class="badge-setting">
+                <label><input type="checkbox" id="show-specific-lists-time"> Show time in specific lists</label>
+                <button class="color-picker" id="specific-lists-color" style="background-color: #ff9f43;"></button>
+                <div class="list-selector">
+                    <select multiple id="selected-lists">
+                    </select>
+                </div>
+            </div>
+
+            <div class="badge-setting">
+                <label><input type="checkbox" id="show-personal-time"> Show time only for me</label>
+                <button class="color-picker" id="personal-time-color" style="background-color: #eb5a46;"></button>
+            </div>
+
+            <button id="save-settings-btn" style="margin-top: 20px; padding: 10px 20px; background: #0079bf; color: white; border: none; cursor: pointer;">Save Settings</button>
+        </div>
+
+        <script>
+            window.BACKEND_URL = "{backend_url}";
+        </script>
+        <script src="/static/board-settings.js"></script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
 
 
 # Подключаем powerup.html как корневой файл (отдаётся по /)

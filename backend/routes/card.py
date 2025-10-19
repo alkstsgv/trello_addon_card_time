@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from datetime import datetime
+import requests
 from ..app.database import get_db
 from ..app.trello_api import get_card_actions
 from ..app.models import Card, CardHistory
@@ -202,3 +203,27 @@ def get_filtered_cards(
 
     cards = query.all()
     return [{"id": c.id, "trello_card_id": c.trello_card_id, "created_at": c.created_at} for c in cards]
+
+# Эндпоинт для получения списков доски
+@router.get("/board/{board_id}/lists")
+def get_board_lists(board_id: str):
+    """
+    Получает список активных колонок доски из Trello API.
+    """
+    try:
+        from ..app.trello_api import BASE_URL, TRELLO_API_KEY, TRELLO_TOKEN
+        url = f"{BASE_URL}/boards/{board_id}/lists"
+        params = {
+            "key": TRELLO_API_KEY,
+            "token": TRELLO_TOKEN,
+            "filter": "open"  # Только открытые (активные) списки
+        }
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            lists = response.json()
+            # Возвращаем только id и name
+            return [{"id": lst["id"], "name": lst["name"]} for lst in lists]
+        else:
+            raise HTTPException(status_code=response.status_code, detail=f"Error fetching lists: {response.text}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
