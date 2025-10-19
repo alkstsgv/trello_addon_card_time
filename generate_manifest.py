@@ -105,17 +105,9 @@ def write_manifest(backend_url: str):
     manifest_data["scopes"] = ["read"]
     manifest_data["connect"] = {
         "iframe": {
-            # ВАЖНО: Этот URL должен совпадать с маршрутом в main.py
-            # Мы его определим ниже как /powerup_frame.html или /powerup.html
-            # Предположим, мы используем /powerup_frame.html для ясности
-            "url": f"{backend_url}/powerup_frame.html",
-            # "callback" не обязателен, если не используем callback-эндпоинты
-            # "callback": {
-            #     "url": f"{backend_url}/callback"
-            # }
+            "url": f"{backend_url}/powerup_frame.html"
         }
     }
-    # Добавляем capabilities
     manifest_data["capabilities"] = [
         "board-buttons",
         "card-buttons",

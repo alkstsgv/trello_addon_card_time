@@ -76,7 +76,7 @@ def serve_powerup_frame(request: Request):
     <head>
         <title>Card Tracker Frame</title>
         <!-- Подключаем Trello Power-Up SDK -->
-        <script src="https://trello.com/power-ups/power-ups.min.js"></script>
+        <script src="https://p.trellocdn.com/power-up.min.js"></script>
     </head>
     <body>
         <!-- Пустое тело. UI будет отрисован через t.render() в powerup.js -->
