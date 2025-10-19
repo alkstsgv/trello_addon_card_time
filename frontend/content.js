@@ -158,13 +158,16 @@ function initContent() {
                 html += `</ul></div>`;
             }
 
-            if (document.getElementById('show-time-per-member').checked && metrics.time_per_member) {
-                html += `<div class="metric-group"><strong>Time per Member:</strong><ul>`;
-                for (const [member, time] of Object.entries(metrics.time_per_member)) {
-                    const hours = (time / 3600).toFixed(2);
-                    html += `<li>${member}: ${hours} hours</li>`;
+            if (document.getElementById('show-time-per-member').checked && metrics.member_time_stats) {
+                html += `<div class="metric-group"><strong>Time per Member:</strong><table border="1"><tr><th>Member</th><th>Action</th><th>Time per Card</th><th>Times Appears</th><th>Times Leaves</th></tr>`;
+                for (const [member, stats] of Object.entries(metrics.member_time_stats)) {
+                    const hours = (stats.total_time / 3600).toFixed(2);
+                    const action = stats.sessions.length > 0 ? 'Multiple Sessions' : 'No Sessions';
+                    html += `<tr><td>${member}</td><td>${action}</td><td>${hours} hours</td><td>${stats.appears_count}</td><td>${stats.leaves_count}</td></tr>`;
                 }
-                html += `</ul></div>`;
+                html += `</table></div>`;
+            } else if (document.getElementById('show-time-per-member').checked) {
+                html += `<div class="metric-group"><strong>Time per Member:</strong><br>No member time data available</div>`;
             }
 
             if (document.getElementById('show-list-counts').checked && metrics.list_counts) {
@@ -187,6 +190,8 @@ function initContent() {
                     html += `</li>`;
                 }
                 html += `</ul></div>`;
+            } else if (document.getElementById('show-move-counts').checked) {
+                html += `<div class="metric-group"><strong>Move Counts by Member:</strong><br>No move count data available</div>`;
             }
 
             if (!html) {

@@ -140,6 +140,97 @@ def calculate_card_metrics(card_id: str, db: Session):
     list_counts = {}
     move_counts_by_member = {}
 
+    # Получаем полную историю действий для подсчета перемещений по пользователям и времени участников
+    try:
+        actions = get_card_actions(card_id)
+        # Создаем словарь для подсчета перемещений каждым пользователем
+        member_move_counts = {}
+        members_dict = {}
+
+        # Сначала собираем информацию о членах
+        for action in actions:
+            member = action.get("memberCreator", {})
+            if member.get("id") and member.get("id") not in members_dict:
+                members_dict[member["id"]] = {
+                    "id": member["id"],
+                    "username": member.get("username", ""),
+                    "fullName": member.get("fullName", "")
+                }
+
+        for action in actions:
+            if action.get("type") == "updateCard":
+                data = action.get("data", {})
+                if data.get("listBefore") and data.get("listAfter"):
+                    member_id = action.get("idMemberCreator")
+                    if member_id and member_id in members_dict:
+                        member_name = members_dict[member_id].get("fullName", members_dict[member_id].get("username", member_id))
+                        if member_name not in member_move_counts:
+                            member_move_counts[member_name] = {}
+                        list_name = data.get("listAfter", {}).get("name")
+                        if list_name:
+                            member_move_counts[member_name][list_name] = member_move_counts[member_name].get(list_name, 0) + 1
+
+        move_counts_by_member = member_move_counts
+
+        # Подсчет времени участников на основе действий addMemberToCard и removeMemberFromCard
+        member_sessions = {}  # member_id -> list of (join_time, leave_time or None)
+        current_members = {}  # member_id -> join_time
+
+        # Сортируем действия по времени
+        sorted_actions = sorted(actions, key=lambda x: x.get("date", ""))
+
+        for action in sorted_actions:
+            action_type = action.get("type")
+            member_id = action.get("idMemberCreator")
+            action_date = datetime.fromisoformat(action.get("date").replace("Z", "+00:00")).replace(tzinfo=None)
+
+            if action_type == "addMemberToCard" and member_id:
+                if member_id not in current_members:
+                    current_members[member_id] = action_date
+                    if member_id not in member_sessions:
+                        member_sessions[member_id] = []
+                    member_sessions[member_id].append([action_date, None])
+
+            elif action_type == "removeMemberFromCard" and member_id:
+                if member_id in current_members:
+                    join_time = current_members[member_id]
+                    # Находим последнюю незавершенную сессию
+                    for session in reversed(member_sessions.get(member_id, [])):
+                        if session[1] is None:
+                            session[1] = action_date
+                            break
+                    del current_members[member_id]
+
+        # Завершаем все незавершенные сессии текущим временем
+        current_time = datetime.now()
+        for member_id, sessions in member_sessions.items():
+            for session in sessions:
+                if session[1] is None:
+                    session[1] = current_time
+
+        # Вычисляем общее время для каждого участника
+        member_time_stats = {}
+        for member_id, sessions in member_sessions.items():
+            if member_id in members_dict:
+                member_name = members_dict[member_id].get("fullName", members_dict[member_id].get("username", member_id))
+                total_time = sum((session[1] - session[0]).total_seconds() for session in sessions if session[1])
+                appears_count = len(sessions)
+                leaves_count = sum(1 for session in sessions if session[1] is not None)
+
+                member_time_stats[member_name] = {
+                    "total_time": total_time,
+                    "appears_count": appears_count,
+                    "leaves_count": leaves_count,
+                    "sessions": sessions
+                }
+
+        time_per_member = {name: stats["total_time"] for name, stats in member_time_stats.items()}
+
+    except Exception as e:
+        print(f"Error getting actions for move counts and member time: {e}")
+        move_counts_by_member = {}
+        time_per_member = {}
+
     # Временные переменные
     current_list = None
     current_member = None
@@ -152,10 +243,6 @@ def calculate_card_metrics(card_id: str, db: Session):
             list_name = action.list_name
             if list_name:
                 list_counts[list_name] = list_counts.get(list_name, 0) + 1
-                creator_id = action.member_id  # Кто выполнил действие
-                if creator_id:
-                    move_counts_by_member[creator_id] = move_counts_by_member.get(creator_id, {})
-                    move_counts_by_member[creator_id][list_name] = move_counts_by_member[creator_id].get(list_name, 0) + 1
 
         # Подсчет времени в колонке
         if action.action_type in ["createCard", "moveCardToList", "updateCard"] and action.list_name:
@@ -165,21 +252,21 @@ def calculate_card_metrics(card_id: str, db: Session):
             current_list = action.list_name
             list_start_time = action.date
 
-        # Подсчет времени на участнике
-        if action.action_type == "addMemberToCard":
+        # Подсчет времени на участнике - теперь учитываем всех пользователей, которые работали с карточкой
+        # Используем member_id из действия перемещения карточки
+        if action.action_type in ["createCard", "moveCardToList", "updateCard"] and action.member_id:
             member_id = action.member_id
             if member_id:
-                if current_member and member_start_time:
-                    elapsed = (action.date - member_start_time).total_seconds()
-                    time_per_member[current_member] = time_per_member.get(current_member, 0) + elapsed
-                current_member = member_id
-                member_start_time = action.date
-        elif action.action_type == "removeMemberFromCard":
-            if current_member and member_start_time:
-                elapsed = (action.date - member_start_time).total_seconds()
-                time_per_member[current_member] = time_per_member.get(current_member, 0) + elapsed
-                current_member = None
-                member_start_time = None
+                # Если это новый участник или другой участник
+                if current_member != member_id:
+                    # Сохраняем время предыдущего участника
+                    if current_member and member_start_time:
+                        elapsed = (action.date - member_start_time).total_seconds()
+                        time_per_member[current_member] = time_per_member.get(current_member, 0) + elapsed
+
+                    # Начинаем отсчет для нового участника
+                    current_member = member_id
+                    member_start_time = action.date
 
     # Завершаем подсчет для последнего списка
     if current_list and list_start_time:
@@ -199,5 +286,6 @@ def calculate_card_metrics(card_id: str, db: Session):
         "time_per_list": time_per_list,
         "time_per_member": time_per_member,
         "list_counts": list_counts,
-        "move_counts_by_member": move_counts_by_member
+        "move_counts_by_member": move_counts_by_member,
+        "member_time_stats": member_time_stats if 'member_time_stats' in locals() else {}
     }
