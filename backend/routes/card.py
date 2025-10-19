@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from datetime import datetime
 from ..app.database import get_db
-from ..app import trello_api
+from ..app.trello_api import get_card_actions
 from ..app.models import Card, CardHistory
 
 router = APIRouter()
@@ -11,6 +11,7 @@ router = APIRouter()
 def fetch_and_save_card_history(card_id: str, db: Session = Depends(get_db)):
     try:
         print(f"Fetching history for card: {card_id}")
+        from ..app import trello_api
         actions = trello_api.get_card_actions(card_id)
         print(f"Got {len(actions)} actions from Trello API")
         trello_api.save_card_history(card_id, actions, db)
@@ -24,6 +25,7 @@ def fetch_and_save_card_history(card_id: str, db: Session = Depends(get_db)):
 def get_card_metrics(card_id: str, db: Session = Depends(get_db)):
     try:
         print(f"Calculating metrics for card: {card_id}")
+        from ..app import trello_api
         metrics = trello_api.calculate_card_metrics(card_id, db)
         print(f"Metrics calculated: {metrics}")
         return metrics
@@ -31,7 +33,7 @@ def get_card_metrics(card_id: str, db: Session = Depends(get_db)):
         print(f"Error in metrics: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
-# Новый эндпоинт для получения истории
+# Новый эндпоинт для получения истории (уникальные колонки)
 @router.get("/card/{card_id}/history")
 def get_card_history(card_id: str, db: Session = Depends(get_db)):
     db_card = db.query(Card).filter(Card.trello_card_id == card_id).first()
@@ -76,6 +78,72 @@ def get_card_history(card_id: str, db: Session = Depends(get_db)):
     history_list.sort(key=lambda x: x["date"])
 
     return history_list
+
+# Новый эндпоинт для получения детальной истории
+@router.get("/card/{card_id}/detailed-history")
+def get_card_detailed_history(card_id: str, db: Session = Depends(get_db)):
+    db_card = db.query(Card).filter(Card.trello_card_id == card_id).first()
+    if not db_card:
+        raise HTTPException(status_code=404, detail="Card not found in database")
+
+    history = db.query(CardHistory).filter(CardHistory.card_id == db_card.id).order_by(CardHistory.date).all()
+
+    # Получаем полную историю действий из Trello API для получения детальной информации
+    try:
+        actions = get_card_actions(card_id)
+    except Exception as e:
+        actions = []
+
+    # Создаем словарь для быстрого поиска членов по ID
+    members_dict = {}
+    for action in actions:
+        member = action.get("memberCreator", {})
+        if member.get("id") and member.get("id") not in members_dict:
+            members_dict[member["id"]] = {
+                "id": member["id"],
+                "username": member.get("username", ""),
+                "fullName": member.get("fullName", "")
+            }
+
+    # Преобразуем историю в детальный формат
+    detailed_history = []
+    for h in history:
+        # Находим соответствующее действие в полной истории для получения listBefore/listAfter
+        list_before = None
+        list_after = None
+        member_name = "N/A"
+
+        for action in actions:
+            if (action.get("type") == "updateCard" and
+                action.get("data", {}).get("listBefore") and
+                action.get("data", {}).get("listAfter") and
+                action.get("data", {}).get("listAfter", {}).get("name") == h.list_name):
+                # Convert action datetime to naive (remove timezone) to match database datetime
+                action_datetime = datetime.fromisoformat(action.get("date").replace("Z", "+00:00")).replace(tzinfo=None)
+                if abs((action_datetime - h.date).total_seconds()) < 1:
+                    list_before = action.get("data", {}).get("listBefore", {}).get("name")
+                    list_after = action.get("data", {}).get("listAfter", {}).get("name")
+                    member_id = action.get("idMemberCreator")
+                    if member_id and member_id in members_dict:
+                        member_name = members_dict[member_id].get("fullName", members_dict[member_id].get("username", member_id))
+                    break
+
+        detailed_history.append({
+            "id": h.id,
+            "type": h.action_type,
+            "date": h.date.isoformat(),
+            "data": {
+                "listBefore": list_before,
+                "listAfter": list_after,
+                "moveTo": f"{list_before} → {list_after}" if list_before and list_after else None
+            },
+            "memberCreator": {
+                "id": h.member_id,
+                "name": member_name
+            }
+        })
+
+    return detailed_history
 
 # Новый эндпоинт для фильтрации
 @router.get("/cards")

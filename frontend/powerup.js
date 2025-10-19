@@ -87,6 +87,8 @@ TrelloPowerUp.initialize({
           <label><input type="checkbox" id="show-total-time" checked> Total Time</label><br>
           <label><input type="checkbox" id="show-list-counts" checked> List Counts</label><br>
           <label><input type="checkbox" id="show-move-counts" checked> Move Counts</label><br>
+          <label><input type="checkbox" id="show-history"> Show History</label><br>
+          <label><input type="checkbox" id="show-detailed-history"> Show Detailed History</label><br>
         </div>
         <div id="content">Click "Load Metrics" to see data</div>
         <div id="history">History will appear here</div>

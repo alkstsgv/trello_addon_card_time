@@ -45,7 +45,9 @@ function initContent() {
         'show-time-per-member',
         'show-total-time',
         'show-list-counts',
-        'show-move-counts'
+        'show-move-counts',
+        'show-history',
+        'show-detailed-history'
     ];
 
     // Load settings from localStorage
@@ -193,25 +195,47 @@ function initContent() {
 
             contentDiv.innerHTML = html;
 
-            // Display history
-            const historyResponse = await fetch(`${backendUrl}/api/card/${cardId}/history`);
-            if (!historyResponse.ok) throw new Error(`HTTP error fetching history! status: ${historyResponse.status}`);
+            // Display history conditionally
+            let historyHtml = '';
+            if (document.getElementById('show-history').checked) {
+                const historyResponse = await fetch(`${backendUrl}/api/card/${cardId}/history`);
+                if (!historyResponse.ok) throw new Error(`HTTP error fetching history! status: ${historyResponse.status}`);
 
-            const historyData = await historyResponse.json();
+                const historyData = await historyResponse.json();
 
-            let historyHtml = '<h4>History</h4><table border="1"><tr><th>Date</th><th>Action</th><th>List</th><th>Visits</th></tr>';
-            if (historyData && historyData.length > 0) {
-                for (const action of historyData) {
-                    const date = new Date(action.date).toLocaleString();
-                    const type = action.type;
-                    const listName = action.data?.listName || 'N/A';
-                    const visitCount = action.data?.visitCount || 1;
-                    historyHtml += `<tr><td>${date}</td><td>${type}</td><td>${listName}</td><td>${visitCount}</td></tr>`;
+                historyHtml = '<h4>History</h4><table border="1"><tr><th>Date</th><th>Action</th><th>List</th><th>Member</th></tr>';
+                if (historyData && historyData.length > 0) {
+                    for (const action of historyData) {
+                        const date = new Date(action.date).toLocaleString();
+                        const type = action.type;
+                        const listName = action.data?.listName || 'N/A';
+                        const memberId = action.memberCreator?.id || 'N/A';
+                        historyHtml += `<tr><td>${date}</td><td>${type}</td><td>${listName}</td><td>${memberId}</td></tr>`;
+                    }
+                } else {
+                    historyHtml += '<tr><td colspan="4">No history found</td></tr>';
                 }
-            } else {
-                historyHtml += '<tr><td colspan="4">No history found</td></tr>';
+                historyHtml += '</table>';
+            } else if (document.getElementById('show-detailed-history').checked) {
+                const detailedHistoryResponse = await fetch(`${backendUrl}/api/card/${cardId}/detailed-history`);
+                if (!detailedHistoryResponse.ok) throw new Error(`HTTP error fetching detailed history! status: ${detailedHistoryResponse.status}`);
+
+                const detailedHistoryData = await detailedHistoryResponse.json();
+
+                historyHtml = '<h4>Detailed History</h4><table border="1"><tr><th>Date</th><th>Action</th><th>Member</th><th>Move To</th></tr>';
+                if (detailedHistoryData && detailedHistoryData.length > 0) {
+                    for (const action of detailedHistoryData) {
+                        const date = new Date(action.date).toLocaleString();
+                        const type = action.type;
+                        const memberName = action.memberCreator?.name || 'N/A';
+                        const moveTo = action.data?.moveTo || 'N/A';
+                        historyHtml += `<tr><td>${date}</td><td>${type}</td><td>${memberName}</td><td>${moveTo}</td></tr>`;
+                    }
+                } else {
+                    historyHtml += '<tr><td colspan="4">No detailed history found</td></tr>';
+                }
+                historyHtml += '</table>';
             }
-            historyHtml += '</table>';
             historyDiv.innerHTML = historyHtml;
 
         } catch (err) {
