@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from datetime import datetime
 from ..app.database import get_db
@@ -10,18 +10,25 @@ router = APIRouter()
 @router.get("/card/{card_id}/fetch-history")
 def fetch_and_save_card_history(card_id: str, db: Session = Depends(get_db)):
     try:
+        print(f"Fetching history for card: {card_id}")
         actions = trello_api.get_card_actions(card_id)
+        print(f"Got {len(actions)} actions from Trello API")
         trello_api.save_card_history(card_id, actions, db)
+        print(f"Saved history to database")
         return {"message": f"История для карточки {card_id} сохранена", "count": len(actions)}
     except Exception as e:
+        print(f"Error in fetch-history: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/card/{card_id}/metrics")
 def get_card_metrics(card_id: str, db: Session = Depends(get_db)):
     try:
+        print(f"Calculating metrics for card: {card_id}")
         metrics = trello_api.calculate_card_metrics(card_id, db)
+        print(f"Metrics calculated: {metrics}")
         return metrics
     except Exception as e:
+        print(f"Error in metrics: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
 # Новый эндпоинт для получения истории

@@ -91,6 +91,88 @@ def serve_powerup_frame(request: Request):
     """
     return HTMLResponse(content=html_content)
 
+@app.get("/content.html", response_class=HTMLResponse)
+def serve_content(request: Request):
+    backend_url = request.url.scheme + "://" + request.url.netloc
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Card Tracker Content</title>
+        <script src="https://p.trellocdn.com/power-up.min.js"></script>
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 20px; }}
+            .metric-group {{ margin: 10px 0; padding: 10px; border: 1px solid #ddd; }}
+            button {{ padding: 10px 20px; background: #0079bf; color: white; border: none; cursor: pointer; }}
+            button:hover {{ background: #005a87; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+            th, td {{ padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }}
+        </style>
+    </head>
+    <body>
+        <h3>Card Tracker</h3>
+        <button id="load-metrics-btn">Load Metrics</button>
+        <div id="settings">
+            <h4>Display Settings</h4>
+            <label><input type="checkbox" id="show-time-per-list" checked> Time per List</label><br>
+            <label><input type="checkbox" id="show-time-per-member" checked> Time per Member</label><br>
+            <label><input type="checkbox" id="show-total-time" checked> Total Time</label><br>
+            <label><input type="checkbox" id="show-list-counts" checked> List Counts</label><br>
+            <label><input type="checkbox" id="show-move-counts" checked> Move Counts</label><br>
+        </div>
+        <div id="content">Click "Load Metrics" to see data</div>
+        <div id="history">History will appear here</div>
+
+        <script>
+            window.BACKEND_URL = "{backend_url}";
+        </script>
+        <script src="/static/content.js"></script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+@app.get("/popup.html", response_class=HTMLResponse)
+def serve_popup(request: Request):
+    backend_url = request.url.scheme + "://" + request.url.netloc
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Card Tracker Popup</title>
+        <script src="https://p.trellocdn.com/power-up.min.js"></script>
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 20px; }}
+            .metric-group {{ margin: 10px 0; padding: 10px; border: 1px solid #ddd; }}
+            button {{ padding: 10px 20px; background: #0079bf; color: white; border: none; cursor: pointer; }}
+            button:hover {{ background: #005a87; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+            th, td {{ padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }}
+        </style>
+    </head>
+    <body>
+        <h3>Card Tracker</h3>
+        <button id="load-metrics-btn">Load Metrics</button>
+        <div id="settings">
+            <h4>Display Settings</h4>
+            <label><input type="checkbox" id="show-time-per-list" checked> Time per List</label><br>
+            <label><input type="checkbox" id="show-time-per-member" checked> Time per Member</label><br>
+            <label><input type="checkbox" id="show-total-time" checked> Total Time</label><br>
+            <label><input type="checkbox" id="show-list-counts" checked> List Counts</label><br>
+            <label><input type="checkbox" id="show-move-counts" checked> Move Counts</label><br>
+        </div>
+        <div id="content">Click "Load Metrics" to see data</div>
+        <div id="history">History will appear here</div>
+
+        <script>
+            window.BACKEND_URL = "{backend_url}";
+        </script>
+        <script src="/static/content.js"></script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
 
 
 # Подключаем powerup.html как корневой файл (отдаётся по /)

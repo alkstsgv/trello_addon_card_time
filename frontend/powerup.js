@@ -5,14 +5,14 @@ var GRAY_ICON = 'https://cdn.hyperdev.com/us-east-1%3A3d31b21c-01a0-4da2-8827-4b
 var cardButtonCallback = function(t){
   return t.popup({
     title: 'Card Tracker',
-    url: './powerup_frame.html'
+    url: t.signUrl('./popup.html')
   });
 };
 
 var boardButtonCallback = function(t){
   return t.popup({
     title: 'Card Tracker Board',
-    url: './powerup_frame.html'
+    url: t.signUrl('./popup.html')
   });
 };
 
@@ -45,6 +45,17 @@ TrelloPowerUp.initialize({
       text: 'Open Tracker',
       callback: cardButtonCallback
     }];
+  },
+  'content': function(t, options) {
+    return {
+      title: 'Card Tracker',
+      icon: GRAY_ICON,
+      content: {
+        type: 'iframe',
+        url: t.signUrl('./content.html'),
+        height: 500
+      }
+    };
   },
   'show-settings': function(t, options) {
     return new Promise((resolve) => {

@@ -16,15 +16,16 @@ print(f"TRELLO_TOKEN: {TRELLO_TOKEN}")      # <-- Временный лог
 
 BASE_URL = "https://api.trello.com/1"
 
-def get_card_actions(card_id: str):
+def get_card_actions(card_id: str, token: str = None):
     """
     Получает историю действий по карточке.
     """
     url = f"{BASE_URL}/cards/{card_id}/actions"
     params = {
         "key": TRELLO_API_KEY,
-        "token": TRELLO_TOKEN,
-        "limit": 1000
+        "token": token or TRELLO_TOKEN,
+        "limit": 1000,
+        "filter": "all"  # Добавлено согласно документации
     }
     response = requests.get(url, params=params)
     if response.status_code == 200:
@@ -32,14 +33,14 @@ def get_card_actions(card_id: str):
     else:
         raise Exception(f"Ошибка при получении действий: {response.status_code}, {response.text}")
 
-def get_card_info(card_id: str):
+def get_card_info(card_id: str, token: str = None):
     """
     Получает базовую информацию о карточке.
     """
     url = f"{BASE_URL}/cards/{card_id}"
     params = {
         "key": TRELLO_API_KEY,
-        "token": TRELLO_TOKEN
+        "token": token or TRELLO_TOKEN
     }
     response = requests.get(url, params=params)
     if response.status_code == 200:
